@@ -37,7 +37,6 @@ pipeline {
         stage('Cargo Clippy') {
             steps {
                 sh '''
-                    rustup component add clippy
                     /var/lib/jenkins/.cargo/bin/cargo clippy --all-targets --all-features -- -D warnings
                 '''
             }
