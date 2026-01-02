@@ -6,7 +6,7 @@ pipeline {
         RUSTUP_HOME = '/var/lib/jenkins/.rustup'
     }
     triggers {
-        pollSCM('*/5 * * * *')
+        pollSCM('H/1 * * * *')
     }
     stages {
         stage('Install Rust if needed') {
