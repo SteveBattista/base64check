@@ -44,9 +44,6 @@ pipeline {
     }
 
     post {
-        always {
-            cleanWs()
-        }
         post {
         success {
             emailext(
