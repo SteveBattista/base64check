@@ -37,7 +37,7 @@ pipeline {
         stage('Cargo Clippy') {
             steps {
                 sh '''
-                    /var/lib/jenkins/.cargo/bin/cargo clippy --all-targets --all-features -- -D warnings
+                    /var/lib/jenkins/.cargo/bin/cargo clippy --all-features --all-targets -- -D warnings -D clippy::pedantic
                 '''
             }
         }

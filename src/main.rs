@@ -1,6 +1,6 @@
 use data_encoding::BASE64;
 use rand::{distributions::Standard, thread_rng, Rng};
-static NUMBER_OF_RUNS: usize = 20000000;
+static NUMBER_OF_RUNS: usize = 20_000_000;
 const MAX_U8_LEN: usize = 512;
 const MAX_NUMBER_OF_UUENCODE_PER_U8: usize = 4;
 static HOW_OFTEN_TO_REPORT: usize = 10000;
@@ -44,7 +44,7 @@ async fn main() {
         });
 
         if run_number % HOW_OFTEN_TO_REPORT == 0 {
-            println!("Testing run number {}.", run_number)
+            println!("Testing run number {run_number}.");
         }
     }
 }
