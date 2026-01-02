@@ -1,0 +1,52 @@
+pipeline {
+    agent any
+
+    environment {
+        CARGO_HOME = '/var/lib/jenkins/.cargo'
+        RUSTUP_HOME = '/var/lib/jenkins/.rustup'
+    }
+    triggers {
+        pollSCM('*/5 * * * *')
+    }
+    stages {
+        stage('Install Rust if needed') {
+            steps {
+                script {
+                        sh '''
+                           if [ ! -d /var/lib/jenkins/.cargo ]; then
+                              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+                              . /var/lib/jenkins/.cargo/env
+                            fi
+                        '''
+                }
+            }
+        }
+
+        stage('Cargo Format') {
+            steps {
+                sh '/var/lib/jenkins/.cargo/bin/cargo fmt -- --check'
+            }
+        }
+
+        stage('Cargo Test') {
+            steps {
+                sh '/var/lib/jenkins/.cargo/bin/cargo test --all-features'
+            }
+        }
+
+        stage('Cargo Clippy') {
+            steps {
+                sh '''
+                    rustup component add clippy
+                    /var/lib/jenkins/.cargo/bin/cargo clippy --all-targets --all-features -- -D warnings
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
