@@ -31,18 +31,18 @@ fn does_uuencode_match_input(input: &[u8]) -> bool {
 }
 #[tokio::main]
 async fn main() {
-   
     let mut rng = rand::thread_rng();
     for run_number in 0..NUMBER_OF_RUNS {
-        let input : Vec<u8> = thread_rng()
+        let input: Vec<u8> = thread_rng()
             .sample_iter(Standard)
             .take(rng.gen_range(0..MAX_U8_LEN))
             .collect::<Vec<u8>>();
-            tokio::spawn(async move {
-                 if !does_uuencode_match_input(&input) {
-                    println!("{:?} won't convert", &input);
-                }});
-        
+        tokio::spawn(async move {
+            if !does_uuencode_match_input(&input) {
+                println!("{:?} won't convert", &input);
+            }
+        });
+
         if run_number % HOW_OFTEN_TO_REPORT == 0 {
             println!("Testing run number {}.", run_number)
         }
