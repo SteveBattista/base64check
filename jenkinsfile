@@ -2,42 +2,95 @@ pipeline {
     agent any
 
     environment {
-        CARGO_HOME = '/var/lib/jenkins/.cargo'
-        RUSTUP_HOME = '/var/lib/jenkins/.rustup'
+        CARGO_HOME = "${WORKSPACE}/.cargo"
+        RUSTUP_HOME = "${WORKSPACE}/.rustup"
+        PATH = "${WORKSPACE}/.cargo/bin:${PATH}"
     }
+    
     triggers {
         pollSCM('H/5 * * * *')
     }
+    
     stages {
-        stage('Install Rust if needed') {
+        stage('Setup Rust Toolchain') {
             steps {
                 script {
-                        sh '''
-                           if [ ! -d /var/lib/jenkins/.cargo ]; then
-                              curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-                              . /var/lib/jenkins/.cargo/env
-                            fi
-                        '''
+                    sh '''
+                        if [ ! -d ${WORKSPACE}/.cargo ]; then
+                            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
+                            export PATH="${WORKSPACE}/.cargo/bin:$PATH"
+                            rustup component add rustfmt clippy
+                        fi
+                        
+                        # Ensure we have the latest stable toolchain
+                        rustc --version
+                        cargo --version
+                    '''
                 }
+            }
+        }
+
+        stage('Cargo Check') {
+            steps {
+                sh 'cargo check --all-targets --all-features'
             }
         }
 
         stage('Cargo Format') {
             steps {
-                sh '/var/lib/jenkins/.cargo/bin/cargo fmt -- --check'
+                sh 'cargo fmt -- --check'
             }
         }
 
         stage('Cargo Test') {
             steps {
-                sh '/var/lib/jenkins/.cargo/bin/cargo test --all-features'
+                sh 'cargo test --all-features --verbose'
             }
         }
 
         stage('Cargo Clippy') {
             steps {
                 sh '''
-                    /var/lib/jenkins/.cargo/bin/cargo clippy --all-features --all-targets -- -D warnings -D clippy::pedantic
+                    cargo clippy --all-features --all-targets -- -D warnings -D clippy::pedantic
+                '''
+            }
+        }
+        
+        stage('Security Audit') {
+            steps {
+                sh '''
+                    # Install cargo-audit if not present
+                    if ! command -v cargo-audit &> /dev/null; then
+                        cargo install cargo-audit
+                    fi
+                    cargo audit
+                '''
+            }
+        }
+
+        stage('Build Release') {
+            steps {
+                sh 'cargo build --release'
+            }
+        }
+
+        stage('Run Verification Test') {
+            steps {
+                sh '''
+                    echo "Running base64 verification test..."
+                    ./target/release/base64check --runs 100000 --threads 2 --report-interval 25000
+                '''
+            }
+        }
+
+        stage('Benchmark') {
+            steps {
+                sh '''
+                    # Install cargo-criterion if not present
+                    if ! command -v cargo-criterion &> /dev/null; then
+                        cargo install cargo-criterion
+                    fi
+                    cargo bench
                 '''
             }
         }
@@ -45,20 +98,52 @@ pipeline {
 
     post {
         always {
-            cleanWs()
+            // Archive build artifacts
+            archiveArtifacts artifacts: 'target/release/base64check', fingerprint: true, allowEmptyArchive: true
+            
+            // Clean workspace but preserve cargo cache
+            sh '''
+                # Clean build artifacts but keep cargo registry cache
+                cargo clean
+                rm -rf target/debug target/doc
+            '''
         }
+        
         success {
             emailext(
                 to: 'stephen.battista@gmail.com',
                 subject: "Jenkins: SUCCESS - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: "Build succeeded.\nSee: ${env.BUILD_URL}"
+                body: """Build succeeded for base64check!
+                
+                Changes: ${env.BUILD_URL}changes
+                Console: ${env.BUILD_URL}console
+                
+                All tests passed and verification completed successfully."""
             )
         }
+        
         failure {
             emailext(
                 to: 'stephen.battista@gmail.com',
                 subject: "Jenkins: FAILURE - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: "Build failed.\nSee console output: ${env.BUILD_URL}console"
+                body: """Build failed for base64check.
+                
+                Please check the console output for details:
+                ${env.BUILD_URL}console
+                
+                Changes that may have caused this failure:
+                ${env.BUILD_URL}changes"""
+            )
+        }
+        
+        unstable {
+            emailext(
+                to: 'stephen.battista@gmail.com',
+                subject: "Jenkins: UNSTABLE - ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """Build is unstable for base64check.
+                
+                Some tests may have failed or there were warnings.
+                Console: ${env.BUILD_URL}console"""
             )
         }
     }

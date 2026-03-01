@@ -1,12 +1,26 @@
 [package]
 name = "base64check"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Stephen Battista <stephen.battista@gmail.com>"]
-edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+edition = "2021"
+description = "A tool to verify Base64 encoding/decoding integrity"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/yourusername/base64check"
+keywords = ["base64", "encoding", "verification", "testing"]
+categories = ["command-line-utilities", "development-tools::testing"]
 
 [dependencies]
-data-encoding = "2.1.2"
-rand = "0.8.4"
-tokio = { version = "1.13.0", features = ["full"] } 
+data-encoding = "2.6"
+rand = "0.8.5"
+clap = { version = "4.5", features = ["derive"] }
+
+[[bin]]
+name = "base64check"
+path = "src/main.rs"
+
+[dev-dependencies]
+criterion = "0.8.2"
+
+[[bench]]
+name = "base64_bench"
+harness = false 
